@@ -25,8 +25,30 @@ The system allows users to **register and log in**, store their course grades, a
 - **python-dotenv**
 - **mysql-connector-python**
 ---
-## How to Run
+## Installation
+```md
 ### Clone the repository 
 ```bash
-git clone https://github.com/manelcorreia/Programa_NotasFaculdade.git
+git clone https://github.com/manelcorreia/Programa_NotasFaculdade.git 
 cd Programa_NotasFaculdade
+```
+# create and activate a virtual environment
+```bash
+python -m venv venv 
+```
+# install dependencies
+```bash
+pip install -r requirements.txt
+```
+# create a .env file in the project root with
+```env
+DB_HOST=localhost
+DB_USER=your_mysql_user
+DB_PASSWORD=your_mysql_password
+DB_NAME=faculdade
+```
+
+# run the application
+```bash
+python main.py
+```
