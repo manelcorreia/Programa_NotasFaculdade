@@ -12,6 +12,7 @@ class DatabaseManager:
         self.database = os.getenv("DB_NAME")
         self.tabela_atual = None     # vai ser definido após login
         self._criar_tabela_users()   # garante que a tabela de logins existe
+        self._criar_catalogo()       # garante que a tabela de catalogo de cadeiras existe
 
     def _obter_conexao(self):
         return mysql.connector.connect(
@@ -31,6 +32,47 @@ class DatabaseManager:
         cursor.execute(query)
         conn.close()
 
+    def _criar_catalogo(self):
+        """cria e preenche o catálogo fixo de cadeiras de x cadeira"""
+        conn = self._obter_conexao()
+        cursor = conn.cursor()
+
+        # cria a tabela catálogo
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS CatalogoCadeiras (
+            nome VARCHAR(100) PRIMARY KEY,
+            ano INT,
+            semestre INT,
+            creditos INT
+        )
+        """)
+
+        # verifica se o catálogo está vazio. se estiver, preenche com as cadeiras
+        cursor.execute("SELECT COUNT(*) FROM CatalogoCadeiras")
+        if cursor.fetchone()[0] == 0:
+            # Podes adicionar mais cadeiras aqui depois!
+            cadeiras = [
+                ("Sistemas em Rede", 1, 1, 6),
+                ("Fisica Geral", 1, 1, 6),
+                ("Matematica Computacional", 1, 1, 6),
+                ("Programacao", 1, 2, 6),
+                ("Arquitetura de Computadores", 1, 2, 6)
+            ]
+            cursor.executemany(
+                "INSERT INTO CatalogoCadeiras (nome, ano, semestre, creditos) VALUES (%s, %s, %s, %s)", cadeiras)
+            conn.commit()
+
+        conn.close()
+
+    def obter_catalogo(self):
+        """Devolve a lista de todas as cadeiras"""
+        conn = self._obter_conexao()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM CatalogoCadeiras")
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
     def registar_utilizador(self, username, password):
         """Cria o login e a tabela pessoal do utilizador"""
         conn = self._obter_conexao()
@@ -49,6 +91,7 @@ class DatabaseManager:
                 disciplina VARCHAR(100),
                 ano INT,
                 semestre VARCHAR(20),
+                creditos INT,
                 efolioA DECIMAL(4,2),
                 efolioB DECIMAL(4,2),
                 efolioGlobal DECIMAL(4,2),
@@ -86,9 +129,9 @@ class DatabaseManager:
         conn = self._obter_conexao()
         cursor = conn.cursor()
         query = f"""INSERT INTO {self.tabela_atual} 
-                    (disciplina, ano, semestre, efolioA, efolioB, efolioGlobal, exame, nota_final, aprovado_reprovado)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-        cursor.execute(query, (nota_obj.nome, nota_obj.ano, nota_obj.semestre, nota_obj.eA, nota_obj.eB, nota_obj.eGlobal, nota_obj.exame, nota_obj.nota_final, nota_obj.aprovacao))
+                    (disciplina, ano, semestre, creditos, efolioA, efolioB, efolioGlobal, exame, nota_final, aprovado_reprovado)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+        cursor.execute(query, (nota_obj.nome, nota_obj.ano, nota_obj.semestre, nota_obj.creditos, nota_obj.eA, nota_obj.eB, nota_obj.eGlobal, nota_obj.exame, nota_obj.nota_final, nota_obj.aprovacao))
         conn.commit()
         conn.close()
 
@@ -105,4 +148,4 @@ class DatabaseManager:
 
         # importei a class disciplina aqui dentro
         from Programa_NotasFaculdade.modulos import Disciplina
-        return [Disciplina(r['disciplina'], r['ano'], r['semestre'], r['efolioA'], r['efolioB'], r['efolioGlobal'], r['exame']) for r in rows]
+        return [Disciplina(r['disciplina'], r['ano'], r['semestre'], r['creditos'], r['efolioA'], r['efolioB'], r['efolioGlobal'], r['exame']) for r in rows]

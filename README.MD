@@ -4,7 +4,9 @@ The system allows users to **register and log in**, store their course grades, a
 ---
 ## Features
 - User registration and login system 
-- MySQL database integration
+- MySQL database integration with dynamic user tables
+- **Course Catalog**: Select from pre-defined courses with automatic year, semester and ECTS allocation
+- **Degree Progress**: Visual progress bar tracking completed ECTS credits (0 to 180)
 - Academic grade management per user
 - Automatic calculation of final grades
 - Approval / rejection logic based on academic rules 
@@ -35,10 +37,17 @@ cd Programa_NotasFaculdade
 # create and activate a virtual environment
 ```bash
 python -m venv venv 
+# On Windows: venv\Scripts\activate
+# On Mac/Linux: source venv/bin/activate
 ```
 # install dependencies
 ```bash
 pip install -r requirements.txt
+```
+# database setup
+Create the main database in your local MySQL server before running the app:
+```sql
+CREATE DATABASE IF NOT EXISTS faculdade;
 ```
 # create a .env file in the project root with
 ```env

@@ -20,7 +20,7 @@ class AppNotas(ctk.CTk):
         self.tabview.pack(padx=20, pady=20)
 
         # criar duas abas
-        self.tab_add = self.tabview.add("Adicionar Disciplina")
+        self.tab_add = self.tabview.add("Adicionar Notas")
         self.tab_hist = self.tabview.add("Ver Histórico Académico")
 
         # configurar a aba de adicionar (chama a função que desenha o "formulário")
@@ -29,17 +29,17 @@ class AppNotas(ctk.CTk):
 
     def configurar_aba_adicionar(self):
         # titulo
-        ctk.CTkLabel(self.tab_add, text="Nova Disciplina", font=("Arial", 20, "bold")).pack(pady=10)
+        ctk.CTkLabel(self.tab_add, text="Novas Notas", font=("Arial", 20, "bold")).pack(pady=10)
 
-        # campos de entrada
-        self.entry_nome = ctk.CTkEntry(self.tab_add, placeholder_text="Nome da Disciplina", width=300)
-        self.entry_nome.pack(pady=5)
+        # obter o catalogo da base de dados
+        self.catalogo_completo = self.db_manager.obter_catalogo()
+        # extrair só os nomes para mostrar na lista
+        nomes_cadeiras = [d["nome"] for d in self.catalogo_completo]
 
-        self.entry_ano = ctk.CTkEntry(self.tab_add, placeholder_text="Ano Letivo (ex:1)", width=300)
-        self.entry_ano.pack(pady=5)
-
-        self.entry_semestre = ctk.CTkEntry(self.tab_add, placeholder_text="Semestre (ex: 1)", width=300)
-        self.entry_semestre.pack(pady=5)
+        # novo dropdown
+        ctk.CTkLabel(self.tab_add, text="Selecione a cadeira:").pack(pady=(10, 0))
+        self.combo_disciplina = ctk.CTkOptionMenu(self.tab_add, values=nomes_cadeiras, width=300)
+        self.combo_disciplina.pack(pady=5)
 
         # notas (efolioA e B)
         frame_efolios = ctk.CTkFrame(self.tab_add, fg_color="transparent")
@@ -71,6 +71,18 @@ class AppNotas(ctk.CTk):
         self.btn_atualizar = ctk.CTkButton(self.tab_hist, text="Atualizar", command=self.atualizar_lista)
         self.btn_atualizar.pack(pady=10)
 
+        # --- NOVO: PAINEL DE PROGRESSO ---
+        self.frame_progresso = ctk.CTkFrame(self.tab_hist)
+        self.frame_progresso.pack(fill="x", padx=10, pady=10)
+
+        self.label_progresso = ctk.CTkLabel(self.frame_progresso, text="Progresso da Licenciatura: 0% (0 / 180 ECTS)",
+                                            font=("Arial", 14, "bold"))
+        self.label_progresso.pack(pady=5)
+
+        self.barra_progresso = ctk.CTkProgressBar(self.frame_progresso, width=400, progress_color="#4CAF50")
+        self.barra_progresso.pack(pady=10)
+        self.barra_progresso.set(0)  # Começa a zero
+
         # cabeçalho da tabela (fixo)
         frame_header = ctk.CTkFrame(self.tab_hist, height=30, fg_color="gray30")
         frame_header.pack(fill="x", padx=10)
@@ -95,6 +107,10 @@ class AppNotas(ctk.CTk):
         # buscar dados à base de dados
         notas = self.db_manager.buscar_todas_notas()
 
+        # variáveis para a barra de progresso
+        total_ects_curso = 180
+        ects_feitos = 0
+
         # criar uma linha para cada disciplina
         for i, n in enumerate(notas):
             # criei uma frame para cada linha como se fosse uma linha de tabela
@@ -111,6 +127,26 @@ class AppNotas(ctk.CTk):
             cor_texto = "#4CAF50" if n.aprovacao == "Aprovado" else "#FF5555"
 
             ctk.CTkLabel(row_frame, text=n.aprovacao, width=100, text_color=cor_texto, font=("Arial", 12, "bold")).pack(side="left", padx=5)
+
+            if n.aprovacao == "Aprovado":
+                ects_feitos += n.creditos
+
+        # atualizar barra de progresso visualmente
+        if notas:
+            percentagem = ects_feitos / total_ects_curso
+
+            # garantir que a barra não passa dos 100% (1.0)
+            if percentagem > 1.0:
+                percentagem = 1.0
+
+            self.barra_progresso.set(percentagem)
+
+            texto_progresso = f"Progresso de licenciatura: {percentagem*100:.1f}% ({ects_feitos} / {total_ects_curso} ECTS)"
+            self.label_progresso.configure(text=texto_progresso)
+        else:
+            # se não houver notas na base de dados
+            self.barra_progresso.set(0)
+            self.label_progresso.configure(text=f"Progresso da Licenciatura: 0.0%  (0 / {total_ects_curso} ECTS)")
 
     def verificar_fase(self):
         """Lógica que decide se o programa mostra o campo Exame ou efolio Global"""
@@ -143,39 +179,49 @@ class AppNotas(ctk.CTk):
     def submeter_nota(self):
         # 1. recolher dados da interface
         try:
-            nome = self.entry_nome.get()
-            ano = int(self.entry_ano.get())
-            semestre = int(self.entry_semestre.get())
+            # 1. Qual foi a cadeira escolhida no Dropdown?
+            nome_selecionado = self.combo_disciplina.get()
+
+            # 2. Procurar os dados dessa cadeira no nosso catálogo
+            dados_cadeira = next(d for d in self.catalogo_completo if d["nome"] == nome_selecionado)
+
+            # Extrair a info fixa automaticamente!
+            ano = dados_cadeira["ano"]
+            semestre = dados_cadeira["semestre"]
+            creditos = dados_cadeira["creditos"]
+
+            # 3. Ler as notas que o utilizador escreveu
             ea = float(self.entry_ea.get())
             eb = float(self.entry_eb.get())
 
             eg, ex = 0.0, 0.0
-
             if self.modo_atual == "efolio global":
                 eg = float(self.entry_eg.get())
             else:
                 ex = float(self.entry_exame.get())
 
-            # 2. criar o objeto
-            nova_disciplina = Disciplina(nome, ano, semestre, ea, eb, eg, ex)
-
-            # 3. guardar no MySQL
+            # 4. Criar o objeto e Guardar
+            nova_disciplina = Disciplina(nome_selecionado, ano, semestre, creditos, ea, eb, eg, ex)
             self.db_manager.guardar_nota(nova_disciplina)
 
-            messagebox.showinfo("Sucesso", f"{nome} guardada!\nResultado: {nova_disciplina.aprovacao}")
-
-            # limpar tudo para a próxima
+            messagebox.showinfo("Sucesso",
+                                f"{nome_selecionado} guardada com sucesso!\nResultado: {nova_disciplina.aprovacao}")
             self.limpar_campos()
 
         except ValueError:
             messagebox.showerror("Erro", "Introduza valores numéricos válidos!")
+        except StopIteration:
+            messagebox.showerror("Erro", "Disciplina não encontrada no catálogo.")
 
     def limpar_campos(self):
-        self.entry_nome.delete(0, "end")
-        self.entry_ano.delete(0, "end")
-        self.entry_semestre.delete(0, "end")
         self.entry_ea.delete(0, "end")
         self.entry_eb.delete(0, "end")
+        self.entry_eg.delete(0, "end")
+        self.entry_exame.delete(0, "end")
+        self.entry_eg.pack_forget()
+        self.entry_exame.pack_forget()
+        self.label_status.configure(text="")
+        self.btn_guardar.configure(state="disabled")
 
 # Nova classe de login
 class LoginApp(ctk.CTk):

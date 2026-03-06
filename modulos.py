@@ -1,8 +1,9 @@
 class Disciplina:
-    def __init__(self, nome, ano, semestre, eA=0.0, eB=0.0, eGlobal=0.0, exame=0.0):
+    def __init__(self, nome, ano, semestre, creditos, eA=0.0, eB=0.0, eGlobal=0.0, exame=0.0):
         self.nome = nome
         self.ano = ano
         self.semestre = semestre
+        self.creditos = creditos
         self.eA = eA
         self.eB = eB
         self.eGlobal = eGlobal
