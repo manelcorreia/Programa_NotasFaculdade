@@ -7,6 +7,7 @@ The system allows users to **register and log in**, store their course grades, a
 - MySQL database integration with dynamic user tables
 - **Course Catalog**: Select from pre-defined courses with automatic year, semester and ECTS allocation
 - **Degree Progress**: Visual progress bar tracking completed ECTS credits (0 to 180)
+- **Weighted Average Calculation**: Automatically calculates the student's current average grade based on ECTS credits and approved courses
 - Academic grade management per user
 - Automatic calculation of final grades
 - Approval / rejection logic based on academic rules 
@@ -19,6 +20,7 @@ The system allows users to **register and log in**, store their course grades, a
 - **Continuous assessment < 3.5** 
   -> Student proceeds to *Exam* -> Approved if 'Exam >= 9.5'
 - The final grade and approval status are calculated automatically.
+- **Weighted Average**: Calculated using the formula `Sum(Final Grade * ECTS) / Total Approved ECTS`.
 ---
 ## Tech Stack
 - **Python 3**

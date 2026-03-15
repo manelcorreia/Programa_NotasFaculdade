@@ -67,11 +67,7 @@ class AppNotas(ctk.CTk):
         self.btn_guardar.pack(pady=20)
 
     def configurar_aba_historico(self):
-        # botão para atualizar (carregar dados novos)
-        self.btn_atualizar = ctk.CTkButton(self.tab_hist, text="Atualizar", command=self.atualizar_lista)
-        self.btn_atualizar.pack(pady=10)
-
-        # --- NOVO: PAINEL DE PROGRESSO ---
+        # --- PAINEL DE PROGRESSO ---
         self.frame_progresso = ctk.CTkFrame(self.tab_hist)
         self.frame_progresso.pack(fill="x", padx=10, pady=10)
 
@@ -82,6 +78,14 @@ class AppNotas(ctk.CTk):
         self.barra_progresso = ctk.CTkProgressBar(self.frame_progresso, width=400, progress_color="#4CAF50")
         self.barra_progresso.pack(pady=10)
         self.barra_progresso.set(0)  # Começa a zero
+
+        # NOVA LINHA: LABEL DA MÉDIA
+        self.label_media = ctk.CTkLabel(self.frame_progresso, text="Média Atual: 0.00", font=("Arial", 16, "bold"), text_color="#E59400")  # Cor de laranja/dourado
+        self.label_media.pack(pady=5)
+
+        # botão para atualizar (carregar dados novos)
+        self.btn_atualizar = ctk.CTkButton(self.tab_hist, text="Atualizar", command=self.atualizar_lista)
+        self.btn_atualizar.pack(pady=10)
 
         # cabeçalho da tabela (fixo)
         frame_header = ctk.CTkFrame(self.tab_hist, height=30, fg_color="gray30")
@@ -110,6 +114,7 @@ class AppNotas(ctk.CTk):
         # variáveis para a barra de progresso
         total_ects_curso = 180
         ects_feitos = 0
+        soma_notas_ponderada = 0   # nova variável para a média
 
         # criar uma linha para cada disciplina
         for i, n in enumerate(notas):
@@ -130,9 +135,11 @@ class AppNotas(ctk.CTk):
 
             if n.aprovacao == "Aprovado":
                 ects_feitos += n.creditos
+                # matemática da média ponderada: (notas * ects da cadeira)
+                soma_notas_ponderada += (n.nota_final * n.creditos)
 
         # atualizar barra de progresso visualmente
-        if notas:
+        if notas and ects_feitos > 0:
             percentagem = ects_feitos / total_ects_curso
 
             # garantir que a barra não passa dos 100% (1.0)
@@ -143,6 +150,10 @@ class AppNotas(ctk.CTk):
 
             texto_progresso = f"Progresso de licenciatura: {percentagem*100:.1f}% ({ects_feitos} / {total_ects_curso} ECTS)"
             self.label_progresso.configure(text=texto_progresso)
+
+            # calculo final da média
+            media_final = soma_notas_ponderada / ects_feitos
+            self.label_media.configure(text=f"Média Atual: {media_final:.2f}")
         else:
             # se não houver notas na base de dados
             self.barra_progresso.set(0)
